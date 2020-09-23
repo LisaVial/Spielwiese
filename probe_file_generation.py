@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 from IPython import embed
 
-filepath = r'D:\Lisa\data\Andrea\AAV5-CamKII-PSAM-HA\Slice 1\2020-06-16T13-11-53AAV5PSAMCamIIGFP KCl9.6mM.h5'
+filepath = r'E:\0_PhD\data\2020-06-05_Andrea_AAV5_KCl\2020-06-05T11-25-32AAV5-KCl8mM.h5'
 
 file = h5py.File(filepath, 'r')
 
