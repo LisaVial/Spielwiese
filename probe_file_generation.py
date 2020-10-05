@@ -4,7 +4,7 @@ import _pickle as pickle
 import circus
 from IPython import embed
 
-filepath = r'E:\0_PhD\data\2020-06-05_Andrea_AAV5_KCl\2020-06-05T11-25-32AAV5-KCl8mM.h5'
+filepath = r'D:\Lisa\spyking_circus_test\2020-05-06T12-40-44Slice1 Test1_BL6 FHM3 P19_coronal_400ms 8psi.h5'
 
 file = h5py.File(filepath, 'r')
 
@@ -13,8 +13,11 @@ same_len_labels = [str(label[0]) + '0' + str(label[1]) if len(label) < 3 else la
 ch_ids = [ch[1] for ch in file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel']]
 indices = list(np.argsort(same_len_labels))
 sorted_channel_ids = np.array(ch_ids)[indices]
-spacing = 38
-radius = 4
+# check spacing, probably 200 um and radius of 30
+# spacing = 38
+spacing = 200
+# radius = 4
+radius = 30
 
 geometry = []
 
