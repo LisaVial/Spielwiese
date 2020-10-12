@@ -4,6 +4,7 @@ import matplotlib.gridspec as spec
 import h5py
 import functions as funcs
 from IPython import embed
+import spykingcircus as sc
 
 # file: 2020-05-06T12-40-44Slice1 Test1_BL6 FHM3 P19_coronal_400ms 8psi.h5
 colors =  ['#749800', '#006d7c']
