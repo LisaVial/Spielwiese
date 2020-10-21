@@ -1,11 +1,7 @@
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import matplotlib.colors as mcolors
-from IPython import embed
-import os
-from matplotlib.cm import get_cmap
+
 
 path = r'E:\0_PhD\data\2020-06-05T12-31-47AAV5-KCl8mM-washed out'
 filename = r'\2020-06-05T12-31-47AAV5-KCl8mM-washed out.result.hdf5'

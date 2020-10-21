@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-import seaborn as sns
-
 
 
 filename = r'D:\Lisa\data\Andrea\Andrea_AAV6_kCl_8mM_analysis.h5'

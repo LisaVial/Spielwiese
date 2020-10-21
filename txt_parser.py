@@ -1,5 +1,3 @@
-from IPython import embed
-
 absolute_path = r'C:\Users\Imaris\Desktop\Lisa\data\Andrea\AAV5-H6.txt'
 
 

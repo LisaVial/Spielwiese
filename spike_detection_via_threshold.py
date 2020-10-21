@@ -1,7 +1,6 @@
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from IPython import embed
 
 
 def get_spike_indices(signal, threshold):

@@ -1,5 +1,4 @@
 import numpy as np
-import math
 import h5py
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as spec

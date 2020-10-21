@@ -1,8 +1,7 @@
 import numpy as np
-import scipy as sc
 import matplotlib.pyplot as plt
 import h5py
-from IPython import embed
+
 
 file_path = r'C:\Users\Imaris\Desktop\Lisa\data\Daniela_h5'
 file_name = r'\2020-07-30T13-39-29FHM3_GS967_BL6_P17_female_400ms_7psi_Slice5_Test1.h5'

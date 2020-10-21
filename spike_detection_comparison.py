@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as spec
 import h5py
 import functions as funcs
-from IPython import embed
-import spykingcircus as sc
+
 
 # file: 2020-05-06T12-40-44Slice1 Test1_BL6 FHM3 P19_coronal_400ms 8psi.h5
 colors = ['#749800', '#006d7c']
@@ -103,7 +102,7 @@ ax_2.set_yticklabels([])
 ax_2.set_xlabel('time [s]')
 
 
-sc_filepath = r'G:\spike_detection_comp\2020-05-06T12-40-44Slice1 Test1_BL6 FHM3 P19_coronal_400ms 8psi.clusters.hdf5'
+sc_filepath = r'D:\Lisa\spyking_circus_test\2020-06-05T11-25-32AAV5-KCl8mM\2020-06-05T11-25-32AAV5-KCl8mM.clusters.hdf5'
 sc_file = h5py.File(sc_filepath, 'r')
 # embed()
 same_len_keys = []
