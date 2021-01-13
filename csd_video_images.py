@@ -9,6 +9,28 @@ matplotlib.use("agg")
 from IPython import embed
 
 
+def read_ascii_file(file):
+    f = open(file, 'r')
+    indices = []
+    time = []
+    v_k = []
+    v_dc = []
+    for k, line in enumerate(f):
+        line = line.strip()
+        columns = line.split(', ')
+        if k < 4:
+            print(columns)
+        if 3 <= k < 2000004 and len(columns) > 1:
+            try:
+                indices.append(float(columns[0]))
+                time.append(float(columns[1]))
+                v_k.append(float(columns[2]))
+                v_dc.append(float(columns[4]))
+            except ValueError:
+                embed()
+    return np.array(indices), np.array(time), np.array(v_k), np.array(v_dc)
+
+
 def get_distance(label_a, label_b):
     '''''
     This function gets the two labels of the channels which voltage traces are going to be plotted to calculate the 
@@ -62,8 +84,10 @@ def get_channel_id(label):
 
 mea_recording_path = "/home/lisa_ruth/mea_recordings/CSD_data/h5_data" \
                      "/2020-10-13T14-27-38FHM3_GS967_BL6_P15_male_400ms_7psi_Slice3_Test1_WITH.h5"
+electrode_asciis = "/home/lisa_ruth/mea_recordings/FHM3_GS967_BL6_P15_male_400ms_7psi_Slice3_Test1_WITH.txt"
 video_path = "/home/lisa_ruth/mea_recordings/CSD_data/201013_microscope" \
              "/FHM3_GS967_BL6_P15_male_exp100ms_dur100sec_400ms_7psi_Slice2_Test3_4movie.tif"
+
 
 mea_file = h5py.File(mea_recording_path, 'r')
 mats = tiff.imread(video_path)
@@ -78,6 +102,8 @@ x0, y0 = (0.185, 0.7125)
 x_offset, y_offset = (0.06, -0.09)
 plot_positions = calculate_plot_positions(label, x0, y0, x_offset, y_offset, relevant_labels)
 
+electrode_indices, time_electrode, v_k, v_dc = read_ascii_file(electrode_asciis)
+
 stepsize = 1000
 num_frames = len(mats)
 print(stepsize*num_frames)
@@ -91,18 +117,21 @@ for i, label in enumerate(relevant_labels):
     channels_voltage_traces.append(voltage_trace_snippet)
 ylim_0 = np.percentile(channels_voltage_traces, 2.5) - 1526.5
 ylim_1 = np.percentile(channels_voltage_traces, 97.5) + 1526.5
-for i, mat in enumerate(mats):
+for i, mat in enumerate(mats[:1]):
     fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111)
     plt.imshow(mat, cmap='gray', interpolation='none')
     plt.axis('off')
-    if i > 0:
-        print(timepoints[i - 1], timepoints[i])
     for j, label in enumerate(plot_positions.keys()):
         position = plot_positions[label]
         ax_x = fig.add_axes([position[0], position[1], 0.05, 0.05])
+        ax_k = fig.add_axes([0.5, 0.5, 0.05, 0.05])
+        if j > 0:
+            print(timepoints[i - 1], timepoints[i])
         if i == 0:
             ax_x.plot(channels_voltage_traces[j][:int(timepoints[i])], alpha=0.25, color='white')
             ax_x.text(position[0], position[1], label, color='white', fontsize=8)
+            ax_k.plot(time_electrode[:2*stepsize], v_k[:2*stepsize], color='#6301e5')
         if j == 6:
             matplotlib.rc('axes', edgecolor='white')
             ax_scale = fig.add_axes([position[0]+0.00825, position[1]+(y_offset+0.055), 0.05, 0.05])
@@ -128,8 +157,19 @@ for i, mat in enumerate(mats):
         ax_x.axes.get_xaxis().set_ticks([])
         ax_x.axes.get_yaxis().set_ticks([])
         ax_x.patch.set_alpha(0.0)
-        # ani = animation.ArtistAnimation(fig, img, interval=100, blit=True,
-        # repeat_delay=1000)
-    plt.savefig('movie_' + str(i) + '.png')
+        ax_k.plot(time_electrode[int(timepoints[i - 2]):int(timepoints[i+1])],
+                  v_k[int(timepoints[i - 2]):int(timepoints[i + 1])], color='#6301e5')
+        ax_k.set_ylim(ylim_0, ylim_1)
+        ax_k.spines['right'].set_visible(False)
+        ax_k.spines['top'].set_visible(False)
+        ax_k.spines['left'].set_visible(False)
+        ax_k.spines['bottom'].set_visible(False)
+        ax_k.axes.get_xaxis().set_visible(False)
+        ax_k.axes.get_yaxis().set_visible(False)
+        ax_k.axes.get_xaxis().set_ticks([])
+        ax_k.axes.get_yaxis().set_ticks([])
+        ax_k.patch.set_alpha(0.0)
+
+    plt.savefig('movie_a_' + str(i) + '.png')
     print('figure', i, 'saved')
 
