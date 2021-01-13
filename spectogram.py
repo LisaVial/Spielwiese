@@ -24,12 +24,25 @@ voltage_traces = mea_file['Data']['Recording_0']['AnalogStream']['Stream_0']['Ch
 sampling_rate = 10000
 for idx, label in enumerate(relevant_labels):
     id = get_channel_id(label)
-    signal = voltage_trace_snippet = voltage_traces[id][:10000] # only of the first second
+    signal = voltage_trace_snippet = voltage_traces[id][:875000]    # time = length of csd video
     f, t, Sxx = scipy.signal.spectrogram(signal, sampling_rate)
     plt.pcolormesh(t, f, Sxx, shading='gouraud')
     plt.ylim(0, 100)
     plt.ylabel('Frequency [Hz]')
     plt.xlabel('Time [sec]')
     plt.savefig('spectogram_' + str(idx) + '.png')
-    print('figure', idx, 'saved')
+    plt.close()
+    print('spectogram', idx, 'saved')
+
+    freqs, psd = signal.welch(signal)
+
+    plt.figure(figsize=(5, 4))
+    plt.semilogx(freqs, psd)
+    plt.title('PSD: power spectral density')
+    plt.xlabel('Frequency')
+    plt.ylabel('Power')
+    plt.tight_layout()
+    plt.savefig('PSD_' + str(idx) + '.png')
+    plt.close()
+    print('PSD', idx, 'saved')
 
