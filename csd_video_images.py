@@ -18,8 +18,7 @@ def read_ascii_file(file):
     for k, line in enumerate(f):
         line = line.strip()
         columns = line.split(', ')
-        if k < 4:
-            print(columns)
+
         if 3 <= k < 2000004 and len(columns) > 1:
             try:
                 indices.append(float(columns[0]))
@@ -106,7 +105,6 @@ electrode_indices, time_electrode, v_k, v_dc = read_ascii_file(electrode_asciis)
 
 stepsize = 1000
 num_frames = len(mats)
-print(stepsize*num_frames)
 voltage_traces = mea_file['Data']['Recording_0']['AnalogStream']['Stream_0']['ChannelData'][:]
 # [:int(stepsize*num_frames)]
 timepoints = np.arange(stepsize, (num_frames * stepsize) + 1, stepsize)
@@ -117,7 +115,7 @@ for i, label in enumerate(relevant_labels):
     channels_voltage_traces.append(voltage_trace_snippet)
 ylim_0 = np.percentile(channels_voltage_traces, 2.5) - 1526.5
 ylim_1 = np.percentile(channels_voltage_traces, 97.5) + 1526.5
-for i, mat in enumerate(mats[:1]):
+for i, mat in enumerate(mats):
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111)
     plt.imshow(mat, cmap='gray', interpolation='none')
@@ -125,13 +123,13 @@ for i, mat in enumerate(mats[:1]):
     for j, label in enumerate(plot_positions.keys()):
         position = plot_positions[label]
         ax_x = fig.add_axes([position[0], position[1], 0.05, 0.05])
-        ax_k = fig.add_axes([0.5, 0.5, 0.05, 0.05])
-        if j > 0:
-            print(timepoints[i - 1], timepoints[i])
+        ax_k = fig.add_axes([0.6525, 0.665, 0.05, 0.05])
+        ax_dc = fig.add_axes([0.6525, 0.5775, 0.05, 0.05])
         if i == 0:
             ax_x.plot(channels_voltage_traces[j][:int(timepoints[i])], alpha=0.25, color='white')
             ax_x.text(position[0], position[1], label, color='white', fontsize=8)
             ax_k.plot(time_electrode[:2*stepsize], v_k[:2*stepsize], color='#6301e5')
+            ax_dc.plot(time_electrode[:2*stepsize], v_dc[:2*stepsize], color='#00c4e0')
         if j == 6:
             matplotlib.rc('axes', edgecolor='white')
             ax_scale = fig.add_axes([position[0]+0.00825, position[1]+(y_offset+0.055), 0.05, 0.05])
@@ -169,7 +167,18 @@ for i, mat in enumerate(mats[:1]):
         ax_k.axes.get_xaxis().set_ticks([])
         ax_k.axes.get_yaxis().set_ticks([])
         ax_k.patch.set_alpha(0.0)
-
+        ax_dc.plot(time_electrode[int(timepoints[i - 2]):int(timepoints[i+1])],
+                   v_dc[int(timepoints[i - 2]):int(timepoints[i + 1])], color='#00c4e0')
+        ax_dc.set_ylim(ylim_0, ylim_1)
+        ax_dc.spines['right'].set_visible(False)
+        ax_dc.spines['top'].set_visible(False)
+        ax_dc.spines['left'].set_visible(False)
+        ax_dc.spines['bottom'].set_visible(False)
+        ax_dc.axes.get_xaxis().set_visible(False)
+        ax_dc.axes.get_yaxis().set_visible(False)
+        ax_dc.axes.get_xaxis().set_ticks([])
+        ax_dc.axes.get_yaxis().set_ticks([])
+        ax_dc.patch.set_alpha(0.0)
     plt.savefig('movie_a_' + str(i) + '.png')
     print('figure', i, 'saved')
 
