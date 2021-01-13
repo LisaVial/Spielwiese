@@ -30,8 +30,21 @@ for idx, label in enumerate(relevant_labels):
     plt.ylim(0, 100)
     plt.ylabel('Frequency [Hz]')
     plt.xlabel('Time [sec]')
+   
     plt.colorbar()
     plt.savefig('spectogram_' + str(label) + '_time_of_video.png')
     plt.close()
     print('figure', idx, 'of', len(relevant_labels), 'saved')
+
+    freqs, psd = signal.welch(signal)
+
+    plt.figure(figsize=(5, 4))
+    plt.semilogx(freqs, psd)
+    plt.title('PSD: power spectral density')
+    plt.xlabel('Frequency')
+    plt.ylabel('Power')
+    plt.tight_layout()
+    plt.savefig('PSD_' + str(idx) + '.png')
+    plt.close()
+    print('PSD', idx, 'saved')
 
