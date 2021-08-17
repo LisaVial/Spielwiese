@@ -1,8 +1,11 @@
 import h5py
 import numpy as np
+import neo
+import quantities as pq
 import scipy.signal as signal
-from scipy.signal import filtfilt, butter
+from scipy.signal import filtfilt, butter, hilbert, savgol_filter, find_peaks
 import matplotlib.pyplot as plt
+import elephant
 from IPython import embed
 
 
@@ -15,18 +18,16 @@ def get_channel_ids(file):
     return np.asarray(ids)[ordered_indices]
 
 
-# def get_scaled_channel(label):
-#     # so far unclear: will this be done once? -> might be difficult regarding memory
-#     # do this for each single channel while the channel is needed -> function has to be called each time when
-#     # signal is needed
-#     id_by_label = get_channel_id(label)
-#     vt = voltage_traces[id_by_label]
-#     conversion_factor = \
-#         file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel'][0]['ConversionFactor']
-#     exponent = file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel'][0]['Exponent'] + 6
-#     # 6 = pV -> uV
-#     scaled_trace = vt * conversion_factor * np.power(10.0, exponent)
-#     return scaled_trace
+def get_scaled_channel(vt):
+    # so far unclear: will this be done once? -> might be difficult regarding memory
+    # do this for each single channel while the channel is needed -> function has to be called each time when
+    # signal is needed
+    conversion_factor = \
+        file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel'][0]['ConversionFactor']
+    exponent = file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel'][0]['Exponent'] + 6
+    # 6 = pV -> uV
+    scaled_trace = vt * conversion_factor * np.power(10.0, exponent)
+    return scaled_trace
 
 
 def get_channel_labels(pad_with_zero=False):
@@ -73,7 +74,8 @@ def butter_div_filters(data, cutoff_freq, fs, mode):
         return y
 
 
-filepath = '/home/lisa_ruth/Nikolas/2021-07-12T14-22-24Slice4_0.5Mg2+_504AP_10mMNMDAPuffing_5psi_400ms_2pulses_3sgap.h5'
+filepath = \
+    r'D:\Lisa\h5_data\Niko_2021-07-12\2021-07-12T14-22-24Slice4_0.5Mg2+_504AP_10mMNMDAPuffing_5psi_400ms_2pulses_3sgap.h5'
 file = h5py.File(filepath, 'r')
 
 wanted_indices = np.array(['14', '30', '46', '62', '78', '94', '110', '126', '142', '0', '15', '31', '47', '63', '79',
@@ -81,24 +83,39 @@ wanted_indices = np.array(['14', '30', '46', '62', '78', '94', '110', '126', '14
                            '17', '33', '49', '65', '81', '97', '113', '129', '145'], dtype='int32')
 
 ordered_indices = get_channel_ids(file)
-print('ordered indices: \n', ordered_indices)
+# print('ordered indices: \n', ordered_indices)
 
 all_channels = file['Data']['Recording_0']['AnalogStream']['Stream_0']['ChannelData'][:]
 selected_channels = [all_channels[idx] for idx in ordered_indices[wanted_indices]]
-print('selected channels: \n', ordered_indices[wanted_indices])
+# print('selected channels: \n', ordered_indices[wanted_indices])
 sampling_frequency = 1000000 / \
                              file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel']['Tick'][0]
 labels = get_channel_labels()
 wanted_labels = [labels[j] for j in wanted_indices]
-print(wanted_labels)
+# print(wanted_labels)
 
 for idx, channel in enumerate(selected_channels):
     print('channel', idx+1, 'of', len(selected_channels))
-
+    channel = get_scaled_channel(channel)
     # np.abs(channel)
-    filtered_channel = butter_div_filters(channel, 25, sampling_frequency, 'low')
-    freqs, t, S_xx = signal.spectrogram(filtered_channel[int(4*sampling_frequency):], sampling_frequency,
-                                        nperseg=2**16, noverlap=2*15)
+    t = np.arange(0, len(channel)/sampling_frequency, 1/sampling_frequency) * pq.s
+    # filtered_channel = butter_div_filters(channel, 200, sampling_frequency, 'low')
+    filtered_channel = savgol_filter(channel, 1001, 4)
+    analytic_signal = hilbert(filtered_channel)
+    threshold = 6 * np.median(np.absolute(filtered_channel) / 0.6745)
+
+    # neo_channel = neo.AnalogSignal(filtered_channel, units='uV', sampling_rate=sampling_frequency*pq.Hz)
+    # analytic_signal = elephant.signal_processing.hilbert(neo_channel)
+    angles = np.angle(analytic_signal)
+    amplitudes = np.abs(analytic_signal)
+
+    peaks = find_peaks(amplitudes, height=threshold)
+    # embed()
+    scatter_time = t[peaks[0]]
+    scatter_amp = amplitudes[peaks[0]]
+
+    # freqs, t, S_xx = signal.spectrogram(filtered_channel[int(4*sampling_frequency):], sampling_frequency,
+    #                                     nperseg=2**16, noverlap=2*15)
     # freqs, t, S_xx = signal.spectrogram(channel[int(4*sampling_frequency):], sampling_frequency, nperseg=2**16,
     #                                     noverlap=2*15)
     # fig_name = 'Spectrogram_' + str(wanted_labels[idx]) + '_wo_filter.png'
@@ -111,11 +128,35 @@ for idx, channel in enumerate(selected_channels):
     # cbar = fig.colorbar(im, ax=ax)
     # plt.savefig('/home/lisa_ruth/Nikolas/' + fig_name)
     # embed()
-    power_sum = [np.sum(S_xx[freqs <= 25][i]) for i in range(S_xx.shape[1])]
+    # power_sum = [np.sum(S_xx[freqs <= 25][i]) for i in range(S_xx.shape[1])]
     fig_2 = plt.figure(figsize=(12, 9))
     f2_name = 'power_sum_over_time' + str(wanted_labels[idx]) + '_wo_filter.png'
-    ax_2 = plt.subplot(111)
-    ax_2.plot(t, power_sum)
-    ax_2.set_ylabel('sum of power of freqs under 25 Hz')
-    ax_2.set_xlabel('time [sec]')
-    plt.savefig('/home/lisa_ruth/Nikolas/' + f2_name)
+    ax_1 = plt.subplot(111)
+    # ax_1.plot(t, neo_channel)
+    ax_1.plot(t, filtered_channel, zorder=1)
+    # ax_1.plot(t, angles)
+    ax_1.plot(t, np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
+    ax_1.plot(t, -np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
+    ax_1.scatter(scatter_time, scatter_amp, color='black', alpha=0.5, zorder=3)
+    # ax_1.set_xlim([7.5, 12.5])
+    ax_1.set_ylabel('sum of power of freqs under 25 Hz')
+    ax_1.set_xlabel('time [sec]')
+    ax_1.spines['right'].set_visible(False)
+    ax_1.spines['top'].set_visible(False)
+    ax_1.get_xaxis().tick_bottom()
+    ax_1.get_yaxis().tick_left()
+    plt.savefig(r'D:\Lisa\Hilbert_transform_w_peaks_channel_' + str(wanted_labels[idx]))
+    # ax_2.plot(t, power_sum)
+    # ax_2 = plt.subplot(312, sharex=ax_1)
+
+    # # ax_2.plot(t, np.angle(channel))
+    # ax_2.set_xlim([7, 12.5])
+    # ax_2.set_ylabel('angle')
+    # ax_2.set_xlabel('time [sec]')
+    # ax_3 = plt.subplot(212, sharex=ax_1)
+    #
+    # # ax_3.plot(t, np.abs(channel))
+    # ax_3.set_xlim([7.5, 12.5])
+    # ax_3.set_ylabel('amplitude')
+
+
