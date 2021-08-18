@@ -103,6 +103,7 @@ for idx, channel in enumerate(selected_channels):
     filtered_channel = savgol_filter(channel, 1001, 4)
     analytic_signal = hilbert(filtered_channel)
     threshold = 6 * np.median(np.absolute(filtered_channel) / 0.6745)
+    # threshold = 4 * np.std(filtered_channel)  # threshold according to Rigas et al., 2015
 
     # neo_channel = neo.AnalogSignal(filtered_channel, units='uV', sampling_rate=sampling_frequency*pq.Hz)
     # analytic_signal = elephant.signal_processing.hilbert(neo_channel)
@@ -110,9 +111,18 @@ for idx, channel in enumerate(selected_channels):
     amplitudes = np.abs(analytic_signal)
 
     peaks = find_peaks(amplitudes, height=threshold)
-    # embed()
+    peak_diff = np.diff(peaks[0])
+    print(len(peak_diff))
+    first_epilepsies = np.where(peak_diff <= 50000)
+
     scatter_time = t[peaks[0]]
     scatter_amp = amplitudes[peaks[0]]
+
+    scatter_ep_time = t[peaks[0][first_epilepsies[0]]]
+    scatter_ep_amp = amplitudes[peaks[0][first_epilepsies[0]]]
+    scatter_ep_amp = [amp for idx, amp in enumerate(scatter_ep_amp) if scatter_ep_time[idx] > 2]
+    scatter_ep_time = [t for t in scatter_ep_time if t > 2]
+    print(scatter_ep_time)
 
     # freqs, t, S_xx = signal.spectrogram(filtered_channel[int(4*sampling_frequency):], sampling_frequency,
     #                                     nperseg=2**16, noverlap=2*15)
@@ -138,6 +148,7 @@ for idx, channel in enumerate(selected_channels):
     ax_1.plot(t, np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
     ax_1.plot(t, -np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
     ax_1.scatter(scatter_time, scatter_amp, color='black', alpha=0.5, zorder=3)
+    ax_1.scatter(scatter_ep_time, scatter_ep_amp, color='pink', zorder=4)
     # ax_1.set_xlim([7.5, 12.5])
     ax_1.set_ylabel('sum of power of freqs under 25 Hz')
     ax_1.set_xlabel('time [sec]')
@@ -145,7 +156,8 @@ for idx, channel in enumerate(selected_channels):
     ax_1.spines['top'].set_visible(False)
     ax_1.get_xaxis().tick_bottom()
     ax_1.get_yaxis().tick_left()
-    plt.savefig(r'D:\Lisa\Hilbert_transform_w_peaks_channel_' + str(wanted_labels[idx]))
+    plt.savefig(r'D:\Lisa\Hilbert_transform_MAD_threshold_w_peaks_channel_' + str(wanted_labels[idx]))
+    # plt.show()
     # ax_2.plot(t, power_sum)
     # ax_2 = plt.subplot(312, sharex=ax_1)
 
