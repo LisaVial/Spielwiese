@@ -2,8 +2,8 @@ import h5py
 import numpy as np
 from IPython import embed
 
-filepath = '/home/lisa_ruth/mea_recordings/Daniela_h5/MEA_210217/' \
-           '2021-02-17T10-52-47FHM3_GS967_BL6_P16_female_400ms_7psi_Slice1_Test1.h5'
+filepath = '/mnt/Data/Lisa/human/15-07-2021/' \
+           '2021-07-15T16-40-00_human_organotypic_Slice2_baseline.h5'
 
 file = h5py.File(filepath, 'r')
 
@@ -32,18 +32,24 @@ for i in range(16):
         geometry.append(current_electrode)
 
 geometry_probe = dict()
-for ch_id, geo in zip(np.array(ch_ids)[indices], np.array(geometry)[indices]):
+for ch_id, geo in zip(np.array(ch_ids)[indices], np.array(geometry)):
     geometry_probe[ch_id] = tuple(geo)
-
+print(geometry_probe)
 fout = "probe.txt"
 fo = open(fout, "w")
 
-for k, v in sorted(geometry_probe.items()):
+ch_ids_out = 'ch_ids.txt'
+fo_ch_ids = open(ch_ids_out, 'w')
+
+for k, v in geometry_probe.items():
     fo.write(str(k) + ': ' + str(v) + ', \n')
+    fo_ch_ids.write(str(k) + ', ')
 
 fo.close()
 print('probe file saved...')
 
+fo_ch_ids.close()
+print('channel ids saved...')
 
 #
 # print(sorted_channel_ids-2)

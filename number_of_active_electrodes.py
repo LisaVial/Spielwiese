@@ -28,8 +28,9 @@ def retrieve_spiketimes(file):
 
 
 folder = '/home/lisa_ruth/spyking-circus/'
-files = glob.glob(folder+'*/*Slice4.clusters.hdf5')
-bl_file = h5py.File('/home/lisa_ruth/Lisa/human/2021-06-22T16-11-39human_slices_Slice1_Vareniclin_washin.h5', 'r')
+files = glob.glob(folder+'*/*Slice1*.clusters.hdf5')
+print(files)
+bl_file = h5py.File('/mnt/Data/Lisa/human/22-06-2021/2021-06-22T16-11-39human_slices_Slice1_Vareniclin_washin.h5', 'r')
 active_channels = []
 spikecounts = []
 # sampling_frequency = 1000000 / \
@@ -61,16 +62,17 @@ ax.set_xticks(range(len(active_channels)))
 # ax.set_xticklabels([r'baseline $32^\circ$C', r'baseline $32^\circ$C with K$^+$', r'$38^\circ$C with K$^+$',
 #                     r'$\sim 40^\circ$C with K$^+$'])
 # ax.set_xticklabels(['potassium \n washin', 'Vareniclin \n washin wo K', 'Vareniclin \n washin high K'])
-ax.set_xticklabels(['normal aCSF', 'high K aCSF', 'low Mg and 4AP', 'aCSF with \n high K and \n low Mg and 4AP'])
-# ax.set_xticklabels(['baseline', 'Vareniclin \n washin', 'Vareniclin \n washin \n after 30 min', 'Vareniclin \n washout',
-#                     'Vareniclin \n washout \n after 1 h'])
+# ax.set_xticklabels(['normal aCSF', 'high K aCSF', 'low Mg and 4AP', 'aCSF with \n high K and \n low Mg and 4AP'])
+ax.set_xticklabels(['Baseline', 'Vareniclin \n washin', 'Vareniclin \n washin \n after 30 min', 'Vareniclin \n washout',
+                    'Vareniclin \n washout \n after 1 h'])
+
 
 ax.set_ylabel('number of active channels')
 ax.spines['right'].set_visible(False)
 ax.spines['top'].set_visible(False)
 ax.get_xaxis().tick_bottom()
 ax.get_yaxis().tick_left()
-plt.savefig('/home/lisa_ruth/lab_seminar/human_acute_spike_counts.png')
+plt.savefig('/mnt/Data/Lisa/human/22-06-2021/analyse_24_10_21/human_acute_spike_counts.png')
 print(active_channels)
 
 
