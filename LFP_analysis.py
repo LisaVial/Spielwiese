@@ -1,11 +1,10 @@
 import h5py
 import numpy as np
-import neo
 import quantities as pq
-import scipy.signal as signal
-from scipy.signal import filtfilt, butter, hilbert, savgol_filter, find_peaks
+from scipy.signal import hilbert, savgol_filter, find_peaks
 import matplotlib.pyplot as plt
-import elephant
+import csv
+import os
 from IPython import embed
 
 
@@ -58,22 +57,6 @@ def get_ordered_index(label: str):
     return get_channel_labels(padded_with_zero).index(corrected_label)
 
 
-def butter_filter(cutoff, fs, mode, order=4):
-        nyq = 0.5 * fs
-        normal_cutoff = cutoff/nyq
-        b, a = butter(order, normal_cutoff, btype=mode, analog=False)
-        return b, a
-
-
-def butter_div_filters(data, cutoff_freq, fs, mode):
-        # todo: check if this still works
-        # as far as I understood it, all three filter types (low, high, notch) can be applied with these functions
-        # and which filter will be applied at the end depends on the chosen mode
-        b, a = butter_filter(cutoff_freq, fs, mode)
-        y = filtfilt(b, a, data)
-        return y
-
-
 filepath = \
     r'/mnt/Data/Nikolas/2021-07-12T14-22-24Slice4_0.5Mg2+_504AP_10mMNMDAPuffing_5psi_400ms_2pulses_3sgap.h5'
 file = h5py.File(filepath, 'r')
@@ -83,93 +66,126 @@ wanted_indices = np.array(['14', '30', '46', '62', '78', '94', '110', '126', '14
                            '17', '33', '49', '65', '81', '97', '113', '129', '145'], dtype='int32')
 
 ordered_indices = get_channel_ids(file)
-# print('ordered indices: \n', ordered_indices)
 
 all_channels = file['Data']['Recording_0']['AnalogStream']['Stream_0']['ChannelData'][:]
 selected_channels = [all_channels[idx] for idx in ordered_indices[wanted_indices]]
-# print('selected channels: \n', ordered_indices[wanted_indices])
 sampling_frequency = 1000000 / \
                              file['Data']['Recording_0']['AnalogStream']['Stream_0']['InfoChannel']['Tick'][0]
+
 labels = get_channel_labels()
 wanted_labels = [labels[j] for j in wanted_indices]
-# print(wanted_labels)
+duration_index = file['Data']['Recording_0']['AnalogStream']['Stream_0']['ChannelDataTimeStamps'][0][2]
+duration = duration_index * (1 / sampling_frequency)
 
-for idx, channel in enumerate(selected_channels):
-    # print('channel', idx+1, 'of', len(selected_channels))
-    channel = get_scaled_channel(channel)
-    # np.abs(channel)
-    t = np.arange(0, len(channel)/sampling_frequency, 1/sampling_frequency) * pq.s
-    # filtered_channel = butter_div_filters(channel, 200, sampling_frequency, 'low')
-    filtered_channel = savgol_filter(channel, 1001, 4)
-    analytic_signal = hilbert(filtered_channel)
-    threshold = 5 * np.median(np.absolute(filtered_channel) / 0.6745)
-    # threshold = 4 * np.std(filtered_channel)  # threshold according to Rigas et al., 2015
+file_path = '/mnt/Data/Nikolas/0_HT/'
+csv_filename = '2021-07-12T14-22-24Slice4_0.5Mg2+_504AP_10mMNMDAPuffing_5psi_400ms_2pulses_3sgap_HT.csv'
+with open(os.path.join(file_path, csv_filename), 'w', newline='') as csvfile:
+    w = csv.writer(csvfile)
+    w.writerow(['label', 'start time', 'end time', 'duration'])
 
-    # neo_channel = neo.AnalogSignal(filtered_channel, units='uV', sampling_rate=sampling_frequency*pq.Hz)
-    # analytic_signal = elephant.signal_processing.hilbert(neo_channel)
-    angles = np.angle(analytic_signal)
-    amplitudes = np.abs(analytic_signal)
+    for idx, channel in enumerate(selected_channels):
 
-    peaks = find_peaks(amplitudes, height=threshold)
-    peak_diff = np.diff(peaks[0])
-    # print(len(peak_diff))
-    first_epilepsies = np.where(peak_diff <= 125000)
-    print(first_epilepsies)
+        channel = get_scaled_channel(channel)
+        t = np.arange(0, len(channel)/sampling_frequency, 1/sampling_frequency) * pq.s
+        filtered_channel = savgol_filter(channel, 1001, 4)
 
-    scatter_time = t[peaks[0]]
-    scatter_amp = amplitudes[peaks[0]]
+        analytic_signal = hilbert(filtered_channel)
+        threshold = 2 * np.median(np.absolute(filtered_channel) / 0.6745)
+        # threshold = 4 * np.std(filtered_channel)  # threshold according to Rigas et al., 2015
 
-    scatter_ep_time = t[peaks[0][first_epilepsies[0]]]
-    scatter_ep_amp = amplitudes[peaks[0][first_epilepsies[0]]]
-    scatter_ep_amp = [amp for idx, amp in enumerate(scatter_ep_amp) if scatter_ep_time[idx] > 2]
-    scatter_ep_time = [t for t in scatter_ep_time if t > 2]
-    # print(scatter_ep_time)
+        angles = np.angle(analytic_signal)
+        amplitudes = np.abs(analytic_signal)
 
-    # freqs, t, S_xx = signal.spectrogram(filtered_channel[int(4*sampling_frequency):], sampling_frequency,
-    #                                     nperseg=2**16, noverlap=2*15)
-    # freqs, t, S_xx = signal.spectrogram(channel[int(4*sampling_frequency):], sampling_frequency, nperseg=2**16,
-    #                                     noverlap=2*15)
-    # fig_name = 'Spectrogram_' + str(wanted_labels[idx]) + '_wo_filter.png'
-    # fig = plt.figure(figsize=(12, 9))
-    # ax = fig.add_subplot(111)
-    # im = ax.pcolormesh(t, freqs, S_xx, shading='nearest')
-    # ax.set_ylim(0, 25)
-    # ax.set_ylabel('frequency [Hz]')
-    # ax.set_xlabel('time [sec]')
-    # cbar = fig.colorbar(im, ax=ax)
-    # plt.savefig('/home/lisa_ruth/Nikolas/' + fig_name)
-    # embed()
-    # power_sum = [np.sum(S_xx[freqs <= 25][i]) for i in range(S_xx.shape[1])]
-    fig_2 = plt.figure(figsize=(12, 9))
-    f2_name = 'power_sum_over_time' + str(wanted_labels[idx]) + '_wo_filter.png'
-    ax_1 = plt.subplot(111)
-    # ax_1.plot(t, neo_channel)
-    # ax_1.plot(t, filtered_channel, zorder=1)
-    # ax_1.plot(t, angles)
-    ax_1.plot(t, np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
-    # ax_1.plot(t, -np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
-    ax_1.scatter(scatter_time, scatter_amp, color='black', alpha=0.5, zorder=3)
-    ax_1.scatter(scatter_ep_time, scatter_ep_amp, color='pink', zorder=4)
-    # ax_1.set_xlim([5, 30])
-    ax_1.set_ylabel('power')
-    ax_1.set_xlabel('time [sec]')
-    ax_1.spines['right'].set_visible(False)
-    ax_1.spines['top'].set_visible(False)
-    ax_1.get_xaxis().tick_bottom()
-    ax_1.get_yaxis().tick_left()
-    # plt.savefig(r'/mnt/Data/Lisa/Hilbert_transform_just_pos_w_peaks_channel_wo_raw_' + str(wanted_labels[idx]))
-    plt.show()
-    # ax_2.plot(t, power_sum)
-    # ax_2 = plt.subplot(312, sharex=ax_1)
+        binned_time = np.linspace(0, int(np.ceil(duration)), int(np.ceil(duration)))
+        binned_values = [np.mean(amplitudes[int(i*sampling_frequency):int((i+1)*sampling_frequency)])
+                         for i in binned_time[:-1]]
 
-    # # ax_2.plot(t, np.angle(channel))
-    # ax_2.set_xlim([7, 12.5])
-    # ax_2.set_ylabel('angle')
-    # ax_2.set_xlabel('time [sec]')
-    # ax_3 = plt.subplot(212, sharex=ax_1)
-    #
-    # # ax_3.plot(t, np.abs(channel))
-    # ax_3.set_xlim([7.5, 12.5])
-    # ax_3.set_ylabel('amplitude')
+        min_peaks_per_seizure = 4
+
+        epileptic_indices = []
+        # start at the 6th value (because of puffing artefact) and go through the values in bins of ten
+        for bin_idx in range(6, len(binned_time[:-6])):
+            # print('bin index:', bin_idx)
+            middle_bin = binned_values[bin_idx]
+            if middle_bin < threshold:
+                continue  # skip middle bins below threshold
+
+            neighbours = []
+
+            for ci in [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]:
+                # print('comparison index:', ci)
+                if binned_values[bin_idx+ci] >= threshold:
+                    neighbours.append(bin_idx + ci)
+
+            if len(neighbours) >= 3:
+                epileptic_indices += [bin_idx] + neighbours
+
+        epileptic_peak_indices = set()
+        for epileptic_index in epileptic_indices:
+            epileptic_peak_indices.add(epileptic_index)
+        epileptic_indices_list = list(epileptic_peak_indices)
+        epileptic_indices_list.sort()
+        print("Indices for channel " + wanted_labels[idx] + ":", epileptic_indices_list)
+
+        if len(epileptic_indices_list) < min_peaks_per_seizure:
+            print("Not enough indices found for channel " + wanted_labels[idx])
+            continue
+
+        above_threshold_time = [binned_time[b_idx] for b_idx in epileptic_indices_list]
+        above_threshold_values = [binned_values[b_idx] for b_idx in epileptic_indices_list]
+
+        fig_1 = plt.figure(figsize=(12, 9))
+        f1_name = os.path.join(file_path, 'HT_bar_with_threshold_crossings_' + str(wanted_labels[idx]) + '.png')
+        ax_1 = plt.subplot(111)
+        ax_1.bar(binned_time[:-1], binned_values)
+        ax_1.bar(above_threshold_time, above_threshold_values, color='r')
+        ax_1.axhline(threshold, 0, int(np.ceil(duration)), ls='--')
+        ax_1.set_ylabel('mean envelope')
+        ax_1.set_xlabel('time [sec]')
+        ax_1.spines['right'].set_visible(False)
+        ax_1.spines['top'].set_visible(False)
+        ax_1.get_xaxis().tick_bottom()
+        ax_1.get_yaxis().tick_left()
+        plt.savefig(f1_name)
+        plt.clf()
+
+        print('For channel', wanted_labels[idx], 'the start time was', binned_time[epileptic_indices_list[0]],
+              'and the end time', binned_time[epileptic_indices_list[-1]])
+        w.writerow(
+            [wanted_labels[idx], binned_time[epileptic_indices_list[0]], binned_time[epileptic_indices_list[-1]],
+             binned_time[epileptic_indices_list[-1]] - binned_time[epileptic_indices_list[0]]])
+
+        # fig_2 = plt.figure(figsize=(12, 9))
+        # f2_name = 'power_sum_over_time' + str(wanted_labels[idx]) + '_wo_filter.png'
+        # ax_2 = plt.subplot(111)
+        # # ax_1.plot(t, neo_channel)
+        # # ax_1.plot(t, filtered_channel, zorder=1)
+        # # ax_1.plot(t, angles)
+        # ax_2.plot(t, np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
+        # # ax_1.plot(t, -np.abs(analytic_signal), color='r', zorder=2, linestyle='--', alpha=.5)
+        # ax_2.scatter(scatter_time, scatter_amp, color='black', alpha=0.5, zorder=3)
+        # ax_2.scatter(scatter_ep_time, scatter_ep_amp, color='pink', zorder=4)
+        # # ax_1.set_xlim([5, 30])
+        # ax_2.set_ylabel('power')
+        # ax_2.set_xlabel('time [sec]')
+        # ax_2.spines['right'].set_visible(False)
+        # ax_2.spines['top'].set_visible(False)
+        # ax_2.get_xaxis().tick_bottom()
+        # ax_2.get_yaxis().tick_left()
+        # plt.savefig(file_path + r'Hilbert_transform_just_pos_w_peaks_channel_wo_raw_' + str(wanted_labels[idx]))
+        # plt.clf()
+        # plt.show()
+        # ax_2.plot(t, power_sum)
+        # ax_2 = plt.subplot(312, sharex=ax_1)
+
+        # # ax_2.plot(t, np.angle(channel))
+        # ax_2.set_xlim([7, 12.5])
+        # ax_2.set_ylabel('angle')
+        # ax_2.set_xlabel('time [sec]')
+        # ax_3 = plt.subplot(212, sharex=ax_1)
+        #
+        # # ax_3.plot(t, np.abs(channel))
+        # ax_3.set_xlim([7.5, 12.5])
+        # ax_3.set_ylabel('amplitude')
 
 
